@@ -1,0 +1,93 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ordenController = void 0;
+const ordenService = __importStar(require("../services/orden.service"));
+const orden_schema_1 = require("../schemas/orden.schema");
+const pdfGenerator = __importStar(require("../utils/pdfGenerator"));
+exports.ordenController = {
+    async listar(req, res, next) {
+        try {
+            const filtros = orden_schema_1.filtroOrdenSchema.parse(req.query);
+            const esCliente = req.user?.roles.includes('cliente') && !req.user?.roles.includes('administrador');
+            const resultado = await ordenService.listarOrdenes(filtros, esCliente ? req.user?.userId : undefined);
+            res.json({ success: true, ...resultado });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    async obtener(req, res, next) {
+        try {
+            const esCliente = req.user?.roles.includes('cliente') && !req.user?.roles.includes('administrador');
+            const orden = await ordenService.obtenerOrden(parseInt(req.params.id), esCliente ? req.user?.userId : undefined);
+            res.json({ success: true, data: orden });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    async crear(req, res, next) {
+        try {
+            const data = orden_schema_1.crearOrdenSchema.parse(req.body);
+            const orden = await ordenService.crearOrden(req.user.userId, data);
+            res.status(201).json({ success: true, data: orden, message: 'Orden creada exitosamente' });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    async cambiarEstado(req, res, next) {
+        try {
+            const { estado, comentario, numero_tracking } = orden_schema_1.cambiarEstadoOrdenSchema.parse(req.body);
+            const orden = await ordenService.cambiarEstadoOrden(parseInt(req.params.id), estado, comentario, numero_tracking, req.user?.userId);
+            res.json({ success: true, data: orden, message: `Estado actualizado a: ${estado}` });
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+    async descargarFactura(req, res, next) {
+        try {
+            const esCliente = req.user?.roles.includes('cliente') && !req.user?.roles.includes('administrador');
+            const orden = await ordenService.obtenerOrden(parseInt(req.params.id), esCliente ? req.user?.userId : undefined);
+            await pdfGenerator.generarFactura(orden, res);
+        }
+        catch (error) {
+            next(error);
+        }
+    },
+};
+//# sourceMappingURL=orden.controller.js.map
